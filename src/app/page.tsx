@@ -1,101 +1,250 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableRow, TableHeader } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+
+import {
+    createConnection,
+    deleteConnectionByName,
+    getConnectionsByClientId,
+    testConnection,
+} from "@/app/actions/connection";
+
+import { useConnectionStore } from "@/store/useConnectionStore";
+import { Connection } from "@/types";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const { clientId, activeConnection, setActiveConnection } = useConnectionStore();
+    const [connections, setConnections] = useState<Connection[]>([]);
+    const [newConnection, setNewConnection] = useState<Partial<Connection>>({});
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    // Fetch all connections for the current clientId on mount
+    useEffect(() => {
+        const fetchConnections = async () => {
+            try {
+                const data = await getConnectionsByClientId(clientId);
+                setConnections(data);
+            } catch (error) {
+                console.error("Erreur lors de la récupération des connexions :", error.message);
+            }
+        };
+
+        fetchConnections();
+    }, [clientId]);
+
+    // Handle creation of a new connection
+    const handleCreateConnection = async () => {
+        if (
+            newConnection.ip &&
+            newConnection.port &&
+            newConnection.serviceName &&
+            newConnection.username &&
+            newConnection.password // Vérifie que le mot de passe est présent
+        ) {
+            try {
+                setLoading(true);
+                const connectionToCreate: Connection = {
+                    connectionName: newConnection.connectionName || `conn-${Date.now()}`, // Nom par défaut
+                    ...(newConnection as Connection),
+                    clientId, // Attach the clientId to the connection
+                };
+                const createdConnection = await createConnection(connectionToCreate);
+                setConnections([...connections, createdConnection]);
+                setNewConnection({});
+                setIsDialogOpen(false);
+            } catch (error: any) {
+                console.error("Erreur lors de la création de la connexion :", error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    // Handle deletion of a connection
+    const handleDeleteConnection = async (connectionName: string) => {
+        try {
+            setLoading(true);
+            await deleteConnectionByName(connectionName);
+            setConnections(connections.filter((conn) => conn.connectionName !== connectionName));
+        } catch (error: any) {
+            console.error("Erreur lors de la suppression de la connexion :", error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle testing of a connection
+    const handleTestConnection = async (connection: Connection) => {
+        try {
+            setLoading(true);
+            const status = await testConnection(connection);
+            setConnections(
+                connections.map((conn) =>
+                    conn.connectionName === connection.connectionName
+                        ? { ...conn, status: status.includes("réussie") ? "Active" : "Failed" }
+                        : conn
+                )
+            );
+        } catch (error: any) {
+            console.error("Erreur lors du test de la connexion :", error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle setting a connection as active
+    const handleSetActiveConnection = (connection: Connection) => {
+        setActiveConnection(connection);
+        console.log("Connexion active définie :", connection);
+    };
+
+    const totalConnections = connections.length;
+    const activeConnections = connections.filter((conn) => conn.status === "Active").length;
+
+    return (
+        <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold mb-4">Active Database Connections</h1>
+
+            {/* Stats Section */}
+            <div className="mb-6 flex gap-4">
+                <div className="bg-gray-100 p-4 rounded shadow">
+                    <h3 className="text-lg font-semibold">Total Connections</h3>
+                    <p className="text-2xl">{totalConnections}</p>
+                </div>
+                <div className="bg-gray-100 p-4 rounded shadow">
+                    <h3 className="text-lg font-semibold">Active Connections</h3>
+                    <p className="text-2xl">{activeConnections}</p>
+                </div>
+                <div className="bg-gray-100 p-4 rounded shadow">
+                    <h3 className="text-lg font-semibold">Current Active Connection</h3>
+                    <p className="text-2xl">
+                        {activeConnection ? activeConnection.connectionName : "None"}
+                    </p>
+                </div>
+            </div>
+
+            {/* Create Connection Dialog */}
+            <div className="mb-4">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button disabled={loading}>Create New Connection</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create New Connection</DialogTitle>
+                            <DialogDescription>Enter the details for the new database connection.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            {/* Input fields */}
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="connectionName" className="text-right">Connection Name</Label>
+                                <Input
+                                    id="connectionName"
+                                    value={newConnection.connectionName || ""}
+                                    onChange={(e) => setNewConnection({ ...newConnection, connectionName: e.target.value })}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            {["ip", "port", "serviceName", "username", "role", "password"].map((field) => (
+                                <div className="grid grid-cols-4 items-center gap-4" key={field}>
+                                    <Label htmlFor={field} className="text-right capitalize">
+                                        {field}
+                                    </Label>
+                                    <Input
+                                        id={field}
+                                        type={field === "port" ? "number" : field === "password" ? "password" : "text"}
+                                        value={newConnection[field] || ""}
+                                        onChange={(e) =>
+                                            setNewConnection({ ...newConnection, [field]: e.target.value })
+                                        }
+                                        className="col-span-3"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <DialogFooter>
+                            <Button disabled={loading} onClick={handleCreateConnection}>
+                                Create Connection
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            {/* Connections Table */}
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Connection Name</TableHead>
+                        <TableHead>IP</TableHead>
+                        <TableHead>Port</TableHead>
+                        <TableHead>Service Name</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {connections.map((connection) => (
+                        <TableRow key={connection.connectionName}>
+                            <TableCell>{connection.connectionName}</TableCell>
+                            <TableCell>{connection.ip}</TableCell>
+                            <TableCell>{connection.port}</TableCell>
+                            <TableCell>{connection.serviceName}</TableCell>
+                            <TableCell>{connection.username}</TableCell>
+                            <TableCell>
+                                <Badge>{connection.role}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    variant={
+                                        connection.status === "Active"
+                                            ? "success"
+                                            : connection.status === "Failed"
+                                                ? "destructive"
+                                                : "default"
+                                    }
+                                >
+                                    {connection.status || "Unknown"}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Button
+                                    variant="outline"
+                                    className="mr-2"
+                                    onClick={() => handleTestConnection(connection)}
+                                >
+                                    Test
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="mr-2"
+                                    onClick={() => handleSetActiveConnection(connection)}
+                                    disabled={activeConnection?.connectionName === connection.connectionName}
+                                >
+                                    {activeConnection?.connectionName === connection.connectionName
+                                        ? "Active"
+                                        : "Set Active"}
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => handleDeleteConnection(connection.connectionName)}
+                                >
+                                    Delete
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
 }
