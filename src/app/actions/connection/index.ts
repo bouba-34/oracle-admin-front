@@ -6,6 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const ENDPOINT_URL = "/api/connections";
 
 
+
 // Actions serveur pour gérer les connexions
 
 /**
@@ -13,8 +14,9 @@ const ENDPOINT_URL = "/api/connections";
  * @param connection Détails de la connexion.
  */
 export const createConnection = async (connection: Connection) => {
+    console.log(API_BASE_URL);
     try {
-        const response = await axios.post(`${API_BASE_URL}${ENDPOINT_URL}/save`, connection);
+        const response = await axios.post(`http://localhost:8080${ENDPOINT_URL}/save`, connection);
         return response.data;
     } catch (error: any) {
         throw new Error(error?.response?.data || error.message || "Erreur lors de la création de la connexion.");
@@ -26,7 +28,7 @@ export const createConnection = async (connection: Connection) => {
  */
 export const getAllConnections = async (): Promise<Connection[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}${ENDPOINT_URL}/all`);
+        const response = await axios.get(`http://localhost:8080${ENDPOINT_URL}/all`);
         return response.data;
     } catch (error: any) {
         throw new Error(error?.response?.data || error.message || "Erreur lors de la récupération des connexions.");
@@ -39,7 +41,7 @@ export const getAllConnections = async (): Promise<Connection[]> => {
  */
 export const getConnectionByName = async (connectionName: string): Promise<Connection> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}${ENDPOINT_URL}/${connectionName}`);
+        const response = await axios.get(`http://localhost:8080${ENDPOINT_URL}/${connectionName}`);
         return response.data;
     } catch (error: any) {
         throw new Error(error?.response?.data || error.message || `Erreur lors de la récupération de la connexion : ${connectionName}.`);
@@ -52,7 +54,7 @@ export const getConnectionByName = async (connectionName: string): Promise<Conne
  */
 export const getConnectionsByClientId = async (clientId: string): Promise<Connection[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}${ENDPOINT_URL}/user/${clientId}`);
+        const response = await axios.get(`http://localhost:8080${ENDPOINT_URL}/user/${clientId}`);
         return response.data;
     } catch (error: any) {
         throw new Error(error?.response?.data || error.message || `Erreur lors de la récupération des connexions pour le clientId : ${clientId}.`);
@@ -61,14 +63,14 @@ export const getConnectionsByClientId = async (clientId: string): Promise<Connec
 
 /**
  * Supprime une connexion par son nom.
- * @param connectionName Nom de la connexion.
+ * @param connectionId Nom de la connexion.
  */
-export const deleteConnectionByName = async (connectionName: string) => {
+export const deleteConnectionById = async (connectionId: string) => {
     try {
-        const response = await axios.delete(`${API_BASE_URL}${ENDPOINT_URL}/${connectionName}`);
+        const response = await axios.delete(`http://localhost:8080${ENDPOINT_URL}/${connectionId}`);
         return response.data;
     } catch (error: any) {
-        throw new Error(error?.response?.data || error.message || `Erreur lors de la suppression de la connexion : ${connectionName}.`);
+        throw new Error(error?.response?.data || error.message || `Erreur lors de la suppression de la connexion : ${connectionId}.`);
     }
 };
 
@@ -78,7 +80,7 @@ export const deleteConnectionByName = async (connectionName: string) => {
  */
 export const testConnection = async (connection: Connection): Promise<string> => {
     try {
-        const response = await axios.post(`${API_BASE_URL}${ENDPOINT_URL}/test`, connection);
+        const response = await axios.post(`http://localhost:8080${ENDPOINT_URL}/test`, connection);
         return response.data;
     } catch (error: any) {
         throw new Error(error?.response?.data || error.message || "Erreur lors du test de connexion.");

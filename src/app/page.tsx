@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 import {
-    createConnection,
-    deleteConnectionByName,
+    createConnection, deleteConnectionById,
     getConnectionsByClientId,
     testConnection,
 } from "@/app/actions/connection";
@@ -38,6 +37,8 @@ export default function Home() {
 
         fetchConnections();
     }, [clientId]);
+
+    //console.log("Active Connexion :", activeConnection);
 
     // Handle creation of a new connection
     const handleCreateConnection = async () => {
@@ -68,11 +69,23 @@ export default function Home() {
     };
 
     // Handle deletion of a connection
-    const handleDeleteConnection = async (connectionName: string) => {
+    const handleDeleteConnection = async (connectionId: string, connectionName: string) => {
         try {
             setLoading(true);
-            await deleteConnectionByName(connectionName);
+            await deleteConnectionById(connectionId);
             setConnections(connections.filter((conn) => conn.connectionName !== connectionName));
+            if(activeConnection?.connectionName === connectionName) {
+                setActiveConnection({
+                    clientId,
+                    connectionName: "",
+                    ip: "",
+                    port: "",
+                    serviceName: "",
+                    username: "",
+                    password: "",
+                    role: "",
+                });
+            }
         } catch (error: any) {
             console.error("Erreur lors de la suppression de la connexion :", error.message);
         } finally {
@@ -106,7 +119,7 @@ export default function Home() {
     };
 
     const totalConnections = connections.length;
-    const activeConnections = connections.filter((conn) => conn.status === "Active").length;
+    //const activeConnections = connections.filter((conn) => conn.status === "Active").length;
 
     return (
         <div className="container mx-auto p-4">
@@ -118,10 +131,10 @@ export default function Home() {
                     <h3 className="text-lg font-semibold">Total Connections</h3>
                     <p className="text-2xl">{totalConnections}</p>
                 </div>
-                <div className="bg-gray-100 p-4 rounded shadow">
+                {/*<div className="bg-gray-100 p-4 rounded shadow">
                     <h3 className="text-lg font-semibold">Active Connections</h3>
                     <p className="text-2xl">{activeConnections}</p>
-                </div>
+                </div>*/}
                 <div className="bg-gray-100 p-4 rounded shadow">
                     <h3 className="text-lg font-semibold">Current Active Connection</h3>
                     <p className="text-2xl">
@@ -236,7 +249,7 @@ export default function Home() {
                                 </Button>
                                 <Button
                                     variant="destructive"
-                                    onClick={() => handleDeleteConnection(connection.connectionName)}
+                                    onClick={() => handleDeleteConnection(connection.id!, connection.connectionName)}
                                 >
                                     Delete
                                 </Button>
