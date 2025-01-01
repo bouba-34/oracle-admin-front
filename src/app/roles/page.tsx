@@ -32,6 +32,7 @@ const RoleManagementPage = () => {
     const { activeConnection } = useConnectionStore();
 
     useEffect(() => {
+        document.title = "Role Management";
         const fetchRoles = async () => {
             if (!activeConnection) return;
             try {
@@ -48,6 +49,7 @@ const RoleManagementPage = () => {
             fetchRoles();
         }
     }, [activeConnection]);
+
 
     const handleAddRole = async () => {
         if (!newRoleName.trim() || !activeConnection) return;

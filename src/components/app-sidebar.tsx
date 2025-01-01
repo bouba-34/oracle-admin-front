@@ -1,4 +1,4 @@
-import {Home,HardDriveDownload,Navigation,  SquareActivity, Cable, ShieldCheck, Users, Bolt} from "lucide-react"
+import {Home, HardDriveDownload, Navigation, SquareActivity, Cable, ShieldCheck, Users, Bolt, Table} from "lucide-react"
 
 import {
     Sidebar,
@@ -52,6 +52,11 @@ const items = [
         title: "Role Management",
         url: "roles",
         icon: Bolt,
+    },
+    {
+        title: "Tablespace Management",
+        url: "tablespaces",
+        icon: Table,
     },
 ]
 

@@ -26,6 +26,7 @@ export default function Home() {
 
     // Fetch all connections for the current clientId on mount
     useEffect(() => {
+        document.title = "Dashboard";
         const fetchConnections = async () => {
             try {
                 const data = await getConnectionsByClientId(clientId);
@@ -98,10 +99,11 @@ export default function Home() {
         try {
             setLoading(true);
             const status = await testConnection(connection);
+            console.log("Statut de la connexion :", status);
             setConnections(
                 connections.map((conn) =>
                     conn.connectionName === connection.connectionName
-                        ? { ...conn, status: status.includes("réussie") ? "Active" : "Failed" }
+                        ? { ...conn, status: status === "success" ? "success" : "failed" }
                         : conn
                 )
             );
@@ -219,12 +221,13 @@ export default function Home() {
                             <TableCell>
                                 <Badge
                                     variant={
-                                        connection.status === "Active"
+                                        connection.status === "success"
                                             ? "success"
-                                            : connection.status === "Failed"
+                                            : connection.status === "failed"
                                                 ? "destructive"
                                                 : "default"
                                     }
+                                    className={connection.status === "success" ? "bg-green-500 text-white" : "bbg-red-500 text-white"}
                                 >
                                     {connection.status || "Unknown"}
                                 </Badge>

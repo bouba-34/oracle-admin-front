@@ -2,77 +2,96 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableRow, TableHeader } from "@/components/ui/table"
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {User, UserData} from "@/types";
+import {createUser, deleteUser, getAllUsers} from "@/app/actions/users";
+import {useConnectionStore} from "@/store/useConnectionStore";
+import { useToast } from "@/hooks/use-toast";
 
-type User = {
-  id: string
-  username: string
-  role: string
-  quota: string
-  defaultTablespace: string
-  temporaryTablespace: string
-}
 
-const initialUsers: User[] = [
-  { id: '1', username: 'john_doe', role: 'DBA', quota: '100MB', defaultTablespace: 'USERS', temporaryTablespace: 'TEMP' },
-  { id: '2', username: 'jane_smith', role: 'Developer', quota: '50MB', defaultTablespace: 'USERS', temporaryTablespace: 'TEMP' },
-]
 
-const VALID_ROLES = ['DBA', 'Developer', 'Analyst']
-const VALID_TABLESPACES = ['USERS', 'TEMP', 'DATA', 'INDEX'] // Liste des tablespaces disponibles
 
-const isValidUsername = (username: string) =>
-    /^[a-zA-Z][a-zA-Z0-9_$#]*$/.test(username)
-
-const isValidQuota = (quota: string) =>
-    /^[0-9]+(MB|GB)$/.test(quota)
-
-const isValidTablespace = (tablespace: string) =>
-    VALID_TABLESPACES.includes(tablespace)
 
 const UsersPage = () => {
-  const [users, setUsers] = useState<User[]>(initialUsers)
-  const [newUser, setNewUser] = useState<Partial<User>>({})
+  const [users, setUsers] = useState<UserData[]>()
+  const [newUser, setNewUser] = useState<User>()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { activeConnection } = useConnectionStore();
+  const { toast } = useToast();
 
-  const handleCreateUser = () => {
-    if (!newUser.username || !isValidUsername(newUser.username)) {
-      setErrorMessage("Invalid username. Must start with a letter and contain only letters, numbers, _, $, or #.")
-      return
-    }
-    if (users.find((user) => user.username === newUser.username)) {
-      setErrorMessage("Username already exists.")
-      return
-    }
-    if (!newUser.role || !VALID_ROLES.includes(newUser.role)) {
-      setErrorMessage(`Invalid role. Valid roles are: ${VALID_ROLES.join(", ")}`)
-      return
-    }
-    if (!newUser.quota || !isValidQuota(newUser.quota)) {
-      setErrorMessage("Invalid quota. Must be in the format of '100MB' or '1GB'.")
-      return
-    }
-    if (!newUser.defaultTablespace || !isValidTablespace(newUser.defaultTablespace)) {
-      setErrorMessage(`Invalid default tablespace. Valid tablespaces are: ${VALID_TABLESPACES.join(", ")}`)
-      return
-    }
-    if (!newUser.temporaryTablespace || !isValidTablespace(newUser.temporaryTablespace)) {
-      setErrorMessage(`Invalid temporary tablespace. Valid tablespaces are: ${VALID_TABLESPACES.join(", ")}`)
-      return
-    }
 
-    setUsers([...users, { ...newUser, id: Date.now().toString() } as User])
-    setNewUser({})
-    setErrorMessage(null)
-    setIsDialogOpen(false)
+
+  useEffect(() => {
+    document.title = "User Management"
+    const fetchUsers = async () => {
+      const data = await getAllUsers(activeConnection!)
+      setUsers(data)
+    }
+    fetchUsers()
+  }, []);
+
+
+  const handleCreateUser = async () => {
+    try {
+      if (!newUser?.newUsername || !newUser?.newPassword || !newUser?.newRole || !newUser?.quota || !newUser?.defaultTablespace || !newUser?.temporaryTablespace) {
+        setErrorMessage("All fields are required.")
+        return
+      }
+
+      const data = await createUser(newUser, activeConnection!)
+      const updatedUsers = await getAllUsers(activeConnection!)
+      setUsers(updatedUsers)
+      setIsDialogOpen(false)
+      if(data.status === 500){
+        toast({
+            title: "Error",
+            description: 'Error creating user',
+        })
+      }else {
+        toast({
+            title: "Success",
+            description: "User created",
+        })
+      }
+        setNewUser(undefined)
+        setErrorMessage(null)
+
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: `${e.message}`,
+      });
+    }
   }
 
-  const handleDeleteUser = (id: string) => {
-    setUsers(users.filter((user) => user.id !== id))
+  const handleDeleteUser = (username: string) => {
+    try {
+        // eslint-disable-next-line no-restricted-globals
+        if (confirm(`Are you sure you want to delete user ${username}?`)) {
+            // eslint-disable-next-line no-restricted-globals
+            deleteUser(username, activeConnection!).then(() => {
+            setUsers(users?.filter((user) => user.username !== username))
+            toast({
+                title: "Success",
+                description: `User ${username} has been deleted`
+            })
+            }).catch((e) => {
+            toast({
+                title: "Error",
+                description: `${e.message}`,
+            });
+            })
+        }
+    }catch (e:any) {
+        toast({
+            title: "Error",
+            description: `${e.message}`,
+        });
+    }
   }
 
   return (
@@ -93,18 +112,27 @@ const UsersPage = () => {
                   <Label htmlFor="username" className="text-right">Username</Label>
                   <Input
                       id="username"
-                      value={newUser.username || ''}
-                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                      value={newUser?.newUsername || ''}
+                      onChange={(e) => setNewUser({...newUser, newUsername: e.target.value})}
                       className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="password" className="text-right">Password</Label>
+                  <Input
+                      id="password"
+                      value={newUser?.newPassword || ''}
+                      onChange={(e) => setNewUser({...newUser, newPassword: e.target.value})}
+                      className="col-span-3"
+                      type={"password"}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="role" className="text-right">Role</Label>
                   <Input
                       id="role"
-                      value={newUser.role || ''}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                      placeholder={`Valid roles: ${VALID_ROLES.join(", ")}`}
+                      value={newUser?.newRole || ''}
+                      onChange={(e) => setNewUser({...newUser, newRole: e.target.value})}
                       className="col-span-3"
                   />
                 </div>
@@ -112,8 +140,8 @@ const UsersPage = () => {
                   <Label htmlFor="quota" className="text-right">Quota</Label>
                   <Input
                       id="quota"
-                      value={newUser.quota || ''}
-                      onChange={(e) => setNewUser({ ...newUser, quota: e.target.value })}
+                      value={newUser?.quota || ''}
+                      onChange={(e) => setNewUser({...newUser, quota: e.target.value})}
                       placeholder="e.g., 100MB or 1GB"
                       className="col-span-3"
                   />
@@ -122,9 +150,8 @@ const UsersPage = () => {
                   <Label htmlFor="defaultTablespace" className="text-right">Default Tablespace</Label>
                   <Input
                       id="defaultTablespace"
-                      value={newUser.defaultTablespace || ''}
-                      onChange={(e) => setNewUser({ ...newUser, defaultTablespace: e.target.value })}
-                      placeholder={`Valid tablespaces: ${VALID_TABLESPACES.join(", ")}`}
+                      value={newUser?.defaultTablespace || ''}
+                      onChange={(e) => setNewUser({...newUser, defaultTablespace: e.target.value})}
                       className="col-span-3"
                   />
                 </div>
@@ -132,9 +159,9 @@ const UsersPage = () => {
                   <Label htmlFor="temporaryTablespace" className="text-right">Temporary Tablespace</Label>
                   <Input
                       id="temporaryTablespace"
-                      value={newUser.temporaryTablespace || ''}
-                      onChange={(e) => setNewUser({ ...newUser, temporaryTablespace: e.target.value })}
-                      placeholder={`Valid tablespaces: ${VALID_TABLESPACES.join(", ")}`}
+                      value={newUser?.temporaryTablespace || ''}
+                      onChange={(e) => setNewUser({...newUser, temporaryTablespace: e.target.value})}
+                      placeholder={`Valid tablespaces: Temp, ...}`}
                       className="col-span-3"
                   />
                 </div>
@@ -160,16 +187,20 @@ const UsersPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-                <TableRow key={user.id}>
+            {users?.map((user) => (
+                <TableRow key={user.username}>
                   <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>{user.quota}</TableCell>
-                  <TableCell>{user.defaultTablespace}</TableCell>
-                  <TableCell>{user.temporaryTablespace}</TableCell>
+                  <TableCell>{user.roles.map((role) => (
+                        `${role}`
+                  ))}</TableCell>
+                  <TableCell>{user.quotas.map((q) => (
+                        `${q.bytes_mb} MB / ${q.max_bytes_mb} MB (${q.tablespace_name})`
+                  ) )}</TableCell>
+                  <TableCell>{user.default_tablespace}</TableCell>
+                  <TableCell>{user.temporary_tablespace}</TableCell>
                   <TableCell>
                     <Button variant="outline" className="mr-2">Edit</Button>
-                    <Button variant="destructive" onClick={() => handleDeleteUser(user.id)}>Delete</Button>
+                    <Button variant="destructive" onClick={() => handleDeleteUser(user.username)}>Delete</Button>
                   </TableCell>
                 </TableRow>
             ))}
