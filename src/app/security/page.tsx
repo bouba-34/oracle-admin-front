@@ -1,6 +1,9 @@
 'use client'
 
 import {useState} from "react";
+import {Button} from "@/components/ui/button";
+import {useToast} from "@/hooks/use-toast";
+import {useConnectionStore} from "@/store/useConnectionStore";
 
 const AUDIT_ACTIONS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE']
 
@@ -11,9 +14,12 @@ const SecurityPage = () => {
     const [encryptionType, setEncryptionType] = useState('AES128')
     const [auditTableName, setAuditTableName] = useState('')
     const [selectedActions, setSelectedActions] = useState<string[]>([])
+    const { toast } = useToast();
+    const { activeConnection } = useConnectionStore();
 
     const handleSubmitEncryption = () => {
-        console.log('Submit')
+        //console.log('Submit')
+
     }
 
     const handleActionChange = (action: string) => {
@@ -31,11 +37,11 @@ const SecurityPage = () => {
     return (
         <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-4">Security</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-10">
                 {/* Encryption Configuration Section */}
                 <div>
-                    <h1 className="text-3xl font-bold mb-4">Encryption Configuration</h1>
-                    <form onSubmit={handleSubmitEncryption} className="space-y-4">
+                    <h1 className="text-3xl font-bold mb-4">TDE Configuration</h1>
+                    <form className="space-y-4">
                         <div>
                             <label htmlFor="tablespaceName" className="block mb-1">Tablespace Name</label>
                             <input
@@ -60,9 +66,9 @@ const SecurityPage = () => {
                                 <option value="AES256">AES256</option>
                             </select>
                         </div>
-                        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        <Button onClick={handleSubmitEncryption} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                             Submit
-                        </button>
+                        </Button>
                     </form>
                 </div>
 
