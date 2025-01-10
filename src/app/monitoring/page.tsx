@@ -1,146 +1,109 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Chart, LineController, LineElement, PointElement, LinearScale, Title, CategoryScale } from "chart.js";
-
-Chart.register(LineController, LineElement, PointElement, LinearScale, Title, CategoryScale);
+import Chart from "chart.js/auto";
+import { Button } from "@/components/ui/button";
 
 const PerformanceDashboard = () => {
     const chartRef = useRef<HTMLCanvasElement>(null);
-    const [chartInstance, setChartInstance] = useState<Chart | null>(null);
-    const [awrData, setAwrData] = useState<any[]>([]);
-    const [ashData, setAshData] = useState<any[]>([]);
+    const [realtimeChart, setRealtimeChart] = useState<Chart | null>(null);
 
     useEffect(() => {
-        if (chartRef.current && !chartInstance) {
-            const ctx = chartRef.current.getContext("2d");
-            if (ctx) {
-                const newChartInstance = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels: [], // Time labels
-                        datasets: [
-                            { label: "CPU", data: [], borderColor: "red", fill: false },
-                            { label: "I/O", data: [], borderColor: "blue", fill: false },
-                            { label: "Memory", data: [], borderColor: "green", fill: false },
-                        ],
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: { title: { display: true, text: "Time" } },
-                            y: { title: { display: true, text: "Usage" } },
+        if (chartRef.current && !realtimeChart) {
+            const chart = new Chart(chartRef.current, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: "CPU", data: [], borderColor: "#FF5733", fill: false },
+                        { label: "I/O", data: [], borderColor: "#008CBA", fill: false },
+                        { label: "Memory", data: [], borderColor: "#28A745", fill: false },
+                    ],
+                },
+                options: {
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: {
+                            title: { display: true, text: "Usage (%)" },
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                callback: (value) => `${value}%`,
+                            },
                         },
                     },
-                });
-                setChartInstance(newChartInstance);
-            }
+                },
+            });
+            setRealtimeChart(chart);
         }
-    }, [chartInstance]);
+    }, [realtimeChart]);
 
     const fetchRealTimeStats = async () => {
         try {
-            const response = await fetch("/performance/realtime");
-            const data = await response.json();
-            const now = new Date().toLocaleTimeString();
+            const cpuUsage = (Math.random() * 100).toFixed(2);
+            const ioUsage = (Math.random() * 100).toFixed(2);
+            const maxMemory = 16;
+            const currentMemoryUsage = (Math.random() * maxMemory).toFixed(2);
+            const memoryPercentage = ((parseFloat(currentMemoryUsage) / maxMemory) * 100).toFixed(2);
 
-            if (chartInstance) {
-                chartInstance.data.labels!.push(now);
-                chartInstance.data.datasets[0].data.push(data.cpu);
-                chartInstance.data.datasets[1].data.push(data.io);
-                chartInstance.data.datasets[2].data.push(data.memory);
-                chartInstance.update();
+            if (realtimeChart) {
+                const now = new Date().toLocaleTimeString();
+                realtimeChart.data.labels?.push(now);
+                realtimeChart.data.datasets[0].data.push(parseFloat(cpuUsage));
+                realtimeChart.data.datasets[1].data.push(parseFloat(ioUsage));
+                realtimeChart.data.datasets[2].data.push(parseFloat(memoryPercentage));
+                realtimeChart.update();
             }
         } catch (error) {
-            console.error("Error fetching real-time stats:", error);
+            console.error("Failed to fetch real-time stats:", error);
         }
     };
 
     useEffect(() => {
         const interval = setInterval(fetchRealTimeStats, 5000);
         return () => clearInterval(interval);
-    }, [chartInstance]);
+    }, [realtimeChart]);
 
-    const fetchAwrData = async () => {
-        try {
-            const response = await fetch("/performance/awr");
-            const data = await response.json();
-            setAwrData(data.slice(0, 10));
-        } catch (error) {
-            console.error("Error fetching AWR data:", error);
-        }
+    const downloadFile = (url: string, filename: string) => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename; // Suggest a filename for the download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
-    const fetchAshData = async () => {
-        try {
-            const response = await fetch("/performance/ash");
-            const data = await response.json();
-            setAshData(data.slice(0, 10));
-        } catch (error) {
-            console.error("Error fetching ASH data:", error);
-        }
-    };
-
-    const downloadReport = (reportType: "awr" | "ash") => {
-        window.location.href = `/performance/${reportType}Report`;
+    const downloadReport = (type: "awr" | "ash") => {
+        const reportUrl = `http://localhost:8080/performance/${type}Report`;
+        const filename = `${type.toUpperCase()}_Report.txt`;
+        downloadFile(reportUrl, filename);
     };
 
     return (
-        <div>
-            <h1>Performance Dashboard</h1>
-            <a href="/index">Back to Main Dashboard</a>
+        <div className="p-6">
+            <h1 className="text-2xl font-bold mb-4">Performance Dashboard</h1>
 
-            <div>
-                <h2>Download Reports</h2>
-                <button onClick={() => downloadReport("awr")}>Download AWR Report</button>
-                <button onClick={() => downloadReport("ash")}>Download ASH Report</button>
+            <div className="mb-6">
+                <Button variant="secondary" onClick={() => (window.location.href = "/")}>
+                    Back to Main Dashboard
+                </Button>
             </div>
 
-            <div>
-                <h2>Real-Time Resource Usage</h2>
-                <canvas ref={chartRef}></canvas>
+            <div className="mb-6 p-4 border border-gray-200 rounded shadow">
+                <h2 className="text-xl font-semibold mb-2">Download Reports</h2>
+                <div className="flex gap-4">
+                    <Button onClick={() => downloadReport("awr")}>Download AWR Report</Button>
+                    <Button variant="secondary" onClick={() => downloadReport("ash")}>
+                        Download ASH Report
+                    </Button>
+                </div>
             </div>
 
-            <div>
-                <h2>AWR Data</h2>
-                <button onClick={fetchAwrData}>Load AWR Data</button>
-                <table>
-                    <thead>
-                    <tr>
-                        {awrData.length > 0 && Object.keys(awrData[0]).map((key) => <th key={key}>{key}</th>)}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {awrData.map((row, index) => (
-                        <tr key={index}>
-                            {Object.values(row).map((value, idx) => (
-                                <td key={idx}>{value}</td>
-                            ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <div>
-                <h2>ASH Data</h2>
-                <button onClick={fetchAshData}>Load ASH Data</button>
-                <table>
-                    <thead>
-                    <tr>
-                        {ashData.length > 0 && Object.keys(ashData[0]).map((key) => <th key={key}>{key}</th>)}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {ashData.map((row, index) => (
-                        <tr key={index}>
-                            {Object.values(row).map((value, idx) => (
-                                <td key={idx}>{value}</td>
-                            ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
+            <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-2">Real-Time Resource Usage</h2>
+                <div className="p-4 border border-gray-200 rounded shadow">
+                    <canvas ref={chartRef}></canvas>
+                </div>
             </div>
         </div>
     );

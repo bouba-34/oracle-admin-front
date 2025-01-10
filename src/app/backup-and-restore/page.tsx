@@ -3,7 +3,13 @@
 import { useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,82 +28,106 @@ const BackupPage = () => {
       });
       toast({
         title: "Backup Successful",
-        description: response.data,
+        description: response.data || "The backup has been completed successfully.",
+        duration: 5000,
+        isClosable: true,
       });
     } catch (error) {
-      const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : "Unknown error";
-      toast({
-        title: "Error",
-        description: errorMessage,
-      });
+      handleError(error, "Backup failed");
     }
   };
 
   const fetchHistory = async () => {
     try {
       const response = await axios.get("http://localhost:8080/backup/history");
-      setHistory(response.data);
+      setHistory(response.data || "No history available.");
       setHistoryDialogOpen(true);
     } catch (error) {
-      const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : "Unknown error";
-      toast({
-        title: "Error",
-        description: errorMessage,
-      });
+      handleError(error, "Failed to fetch backup history");
     }
   };
 
-  const restoreDatabase = async () => {
-    if (!restoreDate) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a valid restore date.",
-      });
-      return;
-    }
+    const restoreDatabase = async () => {
+      if (!restoreDate) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid restore date.",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
-    try {
-      const response = await axios.post("http://localhost:8080/backup/restore", {
-        restoreDate,
-      });
-      toast({
-        title: "Restore Successful",
-        description: response.data,
-      });
-    } catch (error) {
-      const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : "Unknown error";
-      toast({
-        title: "Error",
-        description: errorMessage,
-      });
-    }
-  };
+      // Expression régulière stricte pour valider le format YYYY-MM-DDTHH:MM:SS
+      const dateRegex = /^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])$/;
+
+      if (!dateRegex.test(restoreDate)) {
+        toast({
+          title: "Validation Error",
+          description: "Date must be in the format YYYY-MM-DDTHH:MM:SS.",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      try {
+        const response = await axios.post("http://localhost:8080/restore", {
+          restoreDate,
+        });
+        toast({
+          title: "Restore Successful",
+          description: response.data || "Database restored successfully.",
+          duration: 5000,
+          isClosable: true,
+        });
+      } catch (error) {
+        handleError(error, "Database restore failed");
+      }
+    };
+
+
 
   const scheduleBackup = async () => {
     if (!scheduleDate) {
       toast({
         title: "Validation Error",
         description: "Please enter a valid date and time for the schedule.",
+        duration: 5000,
+        isClosable: true,
       });
       return;
     }
 
     try {
-      const response = await axios.post("http://localhost:8080/api/schedule/configure", {
-        dateTime: scheduleDate,
-        isIncremental: scheduleType,
-      });
+      const response = await axios.post(
+          "http://localhost:8080/api/schedule/configure",
+          {
+            dateTime: scheduleDate,
+            isIncremental: scheduleType,
+          }
+      );
       toast({
         title: "Schedule Successful",
-        description: response.data,
+        description: response.data || "Backup schedule configured successfully.",
+        duration: 5000,
+        isClosable: true,
       });
     } catch (error) {
-      const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : "Unknown error";
-      toast({
-        title: "Error",
-        description: errorMessage,
-      });
+      handleError(error, "Failed to schedule backup");
     }
+  };
+
+  const handleError = (error: unknown, title: string) => {
+    const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data || error.message
+        : "An unknown error occurred.";
+    toast({
+      title,
+      description: errorMessage,
+      duration: 5000,
+      isClosable: true,
+    });
   };
 
   return (
@@ -109,7 +139,9 @@ const BackupPage = () => {
           <h2 className="text-xl font-semibold mb-2">Run Backup</h2>
           <div className="flex gap-4">
             <Button onClick={() => runBackup(false)}>Full Backup</Button>
-            <Button variant="secondary" onClick={() => runBackup(true)}>Incremental Backup</Button>
+            <Button variant="secondary" onClick={() => runBackup(true)}>
+              Incremental Backup
+            </Button>
           </div>
         </div>
 
@@ -122,7 +154,9 @@ const BackupPage = () => {
               <DialogHeader>
                 <DialogTitle>Backup History</DialogTitle>
               </DialogHeader>
-              <pre className="p-4 bg-gray-100 rounded">{history || "No history available."}</pre>
+              <pre className="p-4 bg-gray-100 rounded">
+              {history || "No history available."}
+            </pre>
               <DialogFooter>
                 <Button onClick={() => setHistoryDialogOpen(false)}>Close</Button>
               </DialogFooter>
