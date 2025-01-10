@@ -72,7 +72,7 @@ const TableSpaceManagementPage = () => {
             const data = await getTableSpaceDetail(name, activeConnection!);
             setTableSpaceDetail(data[0]);
             setDetailDialogOpen(true); // Ouvre le dialogue
-            //console.log(tableSpaceDetail)
+            console.log(tableSpaceDetail)
             //console.log("data", data)
         } catch (e: any) {
             toast({
@@ -236,7 +236,7 @@ const TableSpaceManagementPage = () => {
                         <div>
                             <p><strong>AutoExtensible:</strong> {tableSpaceDetail.autoextensible}</p>
                             <p><strong>Size:</strong> {tableSpaceDetail.size_mb}</p>
-                            <p><strong>Max Size:</strong> {tableSpaceDetail.size_mb}</p>
+                            <p><strong>Max Size:</strong> {tableSpaceDetail.max_size_mb}</p>
                             <p><strong>File Directory:</strong> {tableSpaceDetail.file_name}</p>
                         </div>
                     ) : (
